@@ -43,3 +43,13 @@ app.listen(PORT, () => {
 const historiaClinicaRoutes = require("./routes/historiaClinicaRoutes");
 app.use("/api/historia-clinica", historiaClinicaRoutes);
 console.log("📦 historiaClinicaRoutes cargado");
+
+const precioRoutes = require("./routes/precioRoutes");
+app.use("/api/precios", precioRoutes);
+
+const tratamientoRoutes = require("./routes/tratamientoRoutes");
+app.use("/api/tratamientos", tratamientoRoutes);
+
+const doctorRoutes = require("./routes/doctorRoutes");
+app.use("/api/doctores", doctorRoutes);
+
