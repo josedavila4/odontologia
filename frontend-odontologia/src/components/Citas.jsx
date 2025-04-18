@@ -1,11 +1,11 @@
 import { useState, useEffect } from "react";
 import { 
   Container, Typography, TextField, Button, MenuItem, Dialog, DialogTitle, 
-  DialogContent, DialogActions, Card, CardContent, CardActions, Grid, Chip
+  DialogContent, DialogActions, Card, CardContent, CardActions, Grid
 } from "@mui/material";
 import { Cancel, Event, AccessTime, Person, MedicalServices } from "@mui/icons-material";
 
-export default function Citas({ pacientes, doctores }) {
+export default function Citas({ pacientes = [], doctores = [] }) {
   const [open, setOpen] = useState(false);
   const [selectedPatient, setSelectedPatient] = useState("");
   const [selectedDoctor, setSelectedDoctor] = useState("");
@@ -14,7 +14,6 @@ export default function Citas({ pacientes, doctores }) {
   const [motivo, setMotivo] = useState("");
   const [citas, setCitas] = useState(JSON.parse(sessionStorage.getItem("citas")) || []);
 
-  // Estados para el diálogo de cancelación
   const [openCancel, setOpenCancel] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
   const [citaToCancel, setCitaToCancel] = useState(null);
@@ -35,10 +34,8 @@ export default function Citas({ pacientes, doctores }) {
       motivo 
     };
 
-    const updatedCitas = [...citas, nuevaCita];
-    setCitas(updatedCitas);
+    setCitas([...citas, nuevaCita]);
     setOpen(false);
-    // Limpiar campos
     setSelectedPatient("");
     setSelectedDoctor("");
     setFecha("");
@@ -46,7 +43,6 @@ export default function Citas({ pacientes, doctores }) {
     setMotivo("");
   };
 
-  // Función para determinar el estado de la cita
   const clasificarCitas = () => {
     const ahora = new Date();
     return citas.map((cita) => {
@@ -59,21 +55,17 @@ export default function Citas({ pacientes, doctores }) {
     });
   };
 
-  // Función para enviar notificación de cancelación
   const enviarNotificacionCancel = (doctorId, pacienteNombre, reason) => {
     const doctor = doctores.find(d => d.id === doctorId);
     if (doctor) {
       const mensaje = `La cita ha sido cancelada. Motivo: ${reason}`;
       alert(`📲 WhatsApp enviado a ${doctor.telefono}: ${mensaje}`);
     }
-    // Enviar notificación al paciente (simulada)
     alert(`📲 WhatsApp enviado a ${pacienteNombre}: La cita ha sido cancelada. Motivo: ${reason}`);
   };
 
-  // Al hacer clic en cancelar, abrimos el diálogo
   const handleOpenCancel = (cita) => {
-    // Solo se permite cancelar si la cita NO es el mismo día.
-    const hoy = new Date().toISOString().split("T")[0]; // Obtener solo la fecha (YYYY-MM-DD)
+    const hoy = new Date().toISOString().split("T")[0];
     if (cita.fecha <= hoy) {
       alert("No es posible cancelar una cita el mismo día.");
       return;
@@ -83,19 +75,12 @@ export default function Citas({ pacientes, doctores }) {
     setOpenCancel(true);
   };
 
-  // Confirmar cancelación
   const handleConfirmCancel = () => {
     if (!cancelReason.trim()) return;
 
-    // Buscar el doctor por nombre (porque en la cita guardamos el nombre, no el ID)
     const doctor = doctores.find(d => d.nombre === citaToCancel.doctor);
-
-    // Enviar notificaciones de cancelación
     enviarNotificacionCancel(doctor?.id, citaToCancel.paciente, cancelReason);
-
-    // Eliminar la cita
-    const updatedCitas = citas.filter(cita => cita.id !== citaToCancel.id);
-    setCitas(updatedCitas);
+    setCitas(citas.filter(cita => cita.id !== citaToCancel.id));
     setOpenCancel(false);
   };
 
@@ -109,7 +94,6 @@ export default function Citas({ pacientes, doctores }) {
         Nueva Cita
       </Button>
 
-      {/* MODAL PARA NUEVA CITA */}
       <Dialog open={open} onClose={() => setOpen(false)}>
         <DialogTitle>Agendar Nueva Cita</DialogTitle>
         <DialogContent>
@@ -117,7 +101,7 @@ export default function Citas({ pacientes, doctores }) {
             select fullWidth label="Paciente" value={selectedPatient} 
             onChange={(e) => setSelectedPatient(e.target.value)} margin="dense"
           >
-            {pacientes.map((paciente) => (
+            {Array.isArray(pacientes) && pacientes.map((paciente) => (
               <MenuItem key={paciente.id} value={paciente.nombre}>
                 {paciente.nombre}
               </MenuItem>
@@ -128,7 +112,7 @@ export default function Citas({ pacientes, doctores }) {
             select fullWidth label="Doctor" value={selectedDoctor} 
             onChange={(e) => setSelectedDoctor(e.target.value)} margin="dense"
           >
-            {doctores.map((doctor) => (
+            {Array.isArray(doctores) && doctores.map((doctor) => (
               <MenuItem key={doctor.id} value={doctor.nombre}>
                 {doctor.nombre}
               </MenuItem>
@@ -150,7 +134,6 @@ export default function Citas({ pacientes, doctores }) {
         </DialogActions>
       </Dialog>
 
-      {/* DIÁLOGO PARA CANCELAR CITA */}
       <Dialog open={openCancel} onClose={() => setOpenCancel(false)}>
         <DialogTitle>Cancelar Cita</DialogTitle>
         <DialogContent>
@@ -172,7 +155,6 @@ export default function Citas({ pacientes, doctores }) {
         </DialogActions>
       </Dialog>
 
-      {/* TARJETAS DE CITAS */}
       <Grid container spacing={3} sx={{ mt: 2 }}>
         {clasificarCitas().map((cita) => (
           <Grid item xs={12} sm={6} md={4} key={cita.id}>

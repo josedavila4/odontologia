@@ -12,68 +12,46 @@ import {
   useMediaQuery,
   useTheme,
 } from "@mui/material";
-import MedicalServicesIcon from "@mui/icons-material/MedicalServices"; // 🔹 Ejemplo de ícono “servicios médicos”
+import MedicalServicesIcon from "@mui/icons-material/MedicalServices";
 
 export default function Login() {
-  console.log("🟢 Login cargado");
-
   const [correo, setCorreo] = useState("");
   const [contrasena, setContrasena] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-
   const navigate = useNavigate();
 
-  // Responsividad
   const theme = useTheme();
   const isSmallScreen = useMediaQuery(theme.breakpoints.down("sm"));
 
   const handleLogin = async (e) => {
     e.preventDefault();
-    console.log("🟢 Botón de login presionado");
     setError("");
     setLoading(true);
 
-    if (!correo.includes("@")) {
-      setError("Correo inválido");
-      setLoading(false);
-      return;
-    }
-    if (contrasena.length < 6) {
-      setError("La contraseña debe tener al menos 6 caracteres");
-      setLoading(false);
-      return;
-    }
-
     try {
-      console.log("📤 Enviando datos:", { correo, contrasena });
-
       const response = await fetch("http://localhost:5000/api/usuarios/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ correo, contrasena }),
       });
 
-      console.log("📥 Respuesta recibida:", response);
-
       const data = await response.json();
-      console.log("📥 Datos del backend:", data);
-
       if (!response.ok) throw new Error(data.mensaje);
 
-      localStorage.setItem("token", data.token);
-      const decodedToken = JSON.parse(atob(data.token.split(".")[1]));
+      const token = data.token;
+      localStorage.setItem("token", token);
 
-      // Redirecciones
-      if (decodedToken.rol === "msu") {
-        navigate("/seleccionar-consultorio");
-      } else if (decodedToken.rol === "admin") {
-        navigate(`/home/${decodedToken.subdominio}`);
+      const decodedToken = JSON.parse(atob(token.split(".")[1]));
+
+      // Redirección basada en rol
+      if (decodedToken.rol === "admin") {
+        navigate("/admin"); // 👈 Panel del administrador
       } else {
-        navigate(`/home/${decodedToken.subdominio}`);
+        navigate(`/home/${decodedToken.subdominio}`); // 👈 Otros usuarios
       }
     } catch (error) {
-      console.error("❌ Error en el login:", error.message);
+      console.error("❌ Error en login:", error.message);
       setError(error.message);
     } finally {
       setLoading(false);
@@ -83,10 +61,7 @@ export default function Login() {
   return (
     <Box
       sx={{
-        // 💡 Imagen “wave” o gradiente
-        backgroundImage: isSmallScreen
-          ? "none"
-          : "url('/wave-bg.png')", // Reemplázalo por la tuya, o un gradiente
+        backgroundImage: isSmallScreen ? "none" : "url('/wave-bg.png')",
         backgroundRepeat: "no-repeat",
         backgroundSize: "cover",
         backgroundPosition: "center",
@@ -95,10 +70,7 @@ export default function Login() {
         alignItems: "center",
         justifyContent: "center",
         p: 2,
-        // Color de fondo degradado
-        backgroundColor: isSmallScreen
-          ? "#fff"
-          : "linear-gradient(145deg, #a4f9ef 0%, #fff 100%)",
+        backgroundColor: isSmallScreen ? "#fff" : "linear-gradient(145deg, #a4f9ef 0%, #fff 100%)",
       }}
     >
       <Container component="main" maxWidth="xs">
@@ -111,13 +83,10 @@ export default function Login() {
             flexDirection: "column",
             alignItems: "center",
             backdropFilter: isSmallScreen ? "none" : "blur(6px)",
-            backgroundColor: isSmallScreen
-              ? "#fff"
-              : "rgba(255,255,255,0.9)",
+            backgroundColor: isSmallScreen ? "#fff" : "rgba(255,255,255,0.9)",
             borderRadius: 3,
           }}
         >
-          {/* Ícono principal (simboliza servicios dentales) */}
           <Avatar sx={{ m: 1, bgcolor: "teal" }}>
             <MedicalServicesIcon fontSize="large" />
           </Avatar>
@@ -126,14 +95,12 @@ export default function Login() {
             Iniciar Sesión
           </Typography>
 
-          {/* Mensaje de error si hay */}
           {error && (
             <Typography color="error" sx={{ textAlign: "center", mb: 2 }}>
               {error}
             </Typography>
           )}
 
-          {/* Formulario */}
           <Box component="form" onSubmit={handleLogin} sx={{ width: "100%" }}>
             <TextField
               margin="normal"
@@ -153,7 +120,6 @@ export default function Login() {
               onChange={(e) => setContrasena(e.target.value)}
               required
             />
-
             <Button
               type="submit"
               fullWidth

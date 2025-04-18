@@ -2,7 +2,6 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import Login from "./components/Login";
 import Home from "./components/Home";
 import PanelAdministrador from "./components/PanelAdministrador";
-import PanelConsultorio from "./components/PanelConsultorio";
 import RegistrarConsultorio from "./components/RegistrarConsultorio";
 import RegistrarUsuario from "./components/RegistrarUsuario";
 import Pacientes from "./components/Pacientes";
@@ -14,61 +13,42 @@ import Perfil from "./components/Perfil";
 import Configuracion from "./components/Configuracion";
 import SeleccionarConsultorio from "./components/SeleccionarConsultorio";
 import Consultorio from "./components/Consultorio";
-import Odontograma3D from "./components/Odontograma3D"; // Ajusta la ruta si es necesario
-
+import Odontograma3D from "./components/Odontograma3D";
+import RegistrarDoctor from "./components/RegistrarDoctor";
+import GestionarPrecios from "./components/GestionarPrecios";
+import ProtectedRoute from "./components/ProtectedRoute";
 
 export default function App() {
   return (
     <Routes>
-      {/* ✅ Rutas generales */}
+      {/* Rutas públicas */}
       <Route path="/login" element={<Login />} />
-      <Route path="/admin" element={<PanelAdministrador />} />
-      <Route path="/admin/registrar-consultorio" element={<RegistrarConsultorio />} />
-      <Route path="/admin/registrar-usuario" element={<RegistrarUsuario />} />
 
-      {/* ✅ Rutas antiguas que usaban :id (opcional). 
-          Borra estas si ya no las usas. */}
+      {/* Rutas protegidas para roles 'admin' y 'msu' */}
+      <Route element={<ProtectedRoute allowedRoles={['admin', 'msu']} />}>
+        <Route path="/admin" element={<PanelAdministrador />} />
+        <Route path="/admin/registrar-consultorio" element={<RegistrarConsultorio />} />
+        <Route path="/admin/registrar-usuario" element={<RegistrarUsuario />} />
+        <Route path="/registrar-doctor" element={<RegistrarDoctor />} />
+        <Route path="/gestionar-precios" element={<GestionarPrecios />} />
+      </Route>
+
+      {/* Rutas accesibles para todos los usuarios autenticados */}
+      <Route path="/home/:subdominio" element={<Home />} />
+      <Route path="/perfil" element={<Perfil />} />
+      <Route path="/configuracion" element={<Configuracion />} />
+      <Route path="/seleccionar-consultorio" element={<SeleccionarConsultorio />} />
+
+      {/* Rutas específicas del consultorio */}
       <Route path="/consultorio/:subdominio/pacientes" element={<Pacientes />} />
       <Route path="/consultorio/:subdominio/citas" element={<Citas />} />
       <Route path="/consultorio/:subdominio/doctores" element={<Doctores />} />
       <Route path="/consultorio/:subdominio/presupuesto" element={<Presupuesto />} />
       <Route path="/consultorio/:subdominio/historia-clinica" element={<HistoriaClinica />} />
-
-      {/* ✅ Rutas de perfil y configuración */}
-      <Route path="/perfil" element={<Perfil />} />
-      <Route path="/configuracion" element={<Configuracion />} />
-
-      {/* ✅ Pantalla para MSU: selección de consultorio */}
-      <Route path="/seleccionar-consultorio" element={<SeleccionarConsultorio />} />
-
-      {/* 
-        ✅ Ruta principal UNIFICADA para "Home" con subdominio.
-        Aquí puedes usar "Home" o "Consultorio" — el que tengas.
-        Lo ideal: 
-          <Route path="/home/:subdominio" element={<Home />} />
-        O lo que prefieras. 
-      */}
-      <Route path="/home/:subdominio" element={<Home />} />
-
-      {/* 
-        OJO: Si quieres usar Consultorio en lugar de Home, 
-        cambia a: 
-          <Route path="/home/:subdominio" element={<Consultorio />} />
-        y borra la de "/consultorio/home/:subdominio"
-      */}
-      <Route path="/consultorio/home/:subdominio" element={<Consultorio />} />
-
-      {/* 
-        ❌ Quita esta si ya no quieres "/home" sin subdominio.
-        <Route path="/home" element={<Home />} /> 
-      */}
-
-      {/* ✅ Ruta por defecto */}
-      <Route path="*" element={<Navigate to="/login" />} />
-      <Route path="/consultorio/:subdominio/pacientes" element={<Pacientes />} />
       <Route path="/consultorio/:subdominio/odontograma3d/:id" element={<Odontograma3D />} />
 
-
+      {/* Ruta por defecto */}
+      <Route path="*" element={<Navigate to="/login" />} />
     </Routes>
   );
 }

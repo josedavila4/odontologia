@@ -10,8 +10,11 @@ import {
 
 export default function Odontograma3D({ setTabIndex }) {
   const location = useLocation();
-  const { subdominio, cedula } = useParams();
+  const params = useParams();
   const selectedPatient = location.state?.selectedPatient || null;
+
+  const subdominio = params.subdominio;
+  const cedula = params.cedula || selectedPatient?.cedula;
 
   const { scene } = useGLTF("/dientes.glb");
   const allMeshes = useRef({});
@@ -28,47 +31,75 @@ export default function Odontograma3D({ setTabIndex }) {
     scene.traverse((child) => {
       if (child.isMesh) {
         meshes[child.name] = child;
-        child.visible = false; // Ocultar todo desde el inicio
+        child.visible = false;
       }
     });
     allMeshes.current = meshes;
+    console.log("🎨 Mallas cargadas en el modelo:", Object.keys(meshes));
   }, [scene]);
 
   useEffect(() => {
-    if (!subdominio || !cedula) return;
+    if (!subdominio || !cedula) {
+      console.warn("🚨 Falta subdominio o cédula:", subdominio, cedula);
+      return;
+    }
+
+    console.log("🔍 Iniciando carga para:", subdominio, cedula);
 
     axios.get(`http://localhost:5000/api/pacientes/${subdominio}/${cedula}`, {
       headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
     })
-      .then(res => {
+    .then(res => {
+      console.log("🧍 Paciente recibido:", res.data);
+    
+      if (res.data?.cedula) {
         setPaciente(res.data);
-        return axios.get(`http://localhost:5000/api/historia-clinica/${subdominio}/${cedula}`, {
-          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-        });
+      } else {
+        console.warn("⚠️ El backend no devolvió datos completos del paciente.");
+        setPaciente({ cedula }); // fallback mínimo
+      }
+    
+      return axios.get(`http://localhost:5000/api/historia-clinica/${subdominio}/${cedula}`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+      });
+    })
+    
+      .then(res => {
+        console.log("📋 Historia clínica recibida:", res.data);
+        setHistoriaClinica(Array.isArray(res.data) ? res.data : []);
       })
-      .then(res => setHistoriaClinica(res.data))
-      .catch(console.error);
+      .catch(error => {
+        console.error("❌ Error al cargar historia clínica o paciente:", error);
+      });
   }, [subdominio, cedula]);
 
   useEffect(() => {
-    // 🔄 Resetear visibilidad
-    Object.keys(allMeshes.current).forEach(nombre => {
-      allMeshes.current[nombre].visible = false;
+    const meshes = allMeshes.current;
+    Object.values(meshes).forEach(mesh => {
+      mesh.visible = false;
     });
 
-    historiaClinica.forEach(({ diente, tratamiento, diagnostico }) => {
-      const visible = diagnostico !== "Ausente";
-      if (!visible) return;
+    if (!historiaClinica || historiaClinica.length === 0) {
+      console.warn("⚠️ Historia clínica vacía, no se muestra nada.");
+      return;
+    }
 
-      if (tratamiento === "Endodoncia") {
-        [`${diente}_endo`, `${diente}_r_caries`].forEach(layer => {
-          if (allMeshes.current[layer]) allMeshes.current[layer].visible = true;
+    historiaClinica.forEach(({ diente, tratamientos, presente }) => {
+      if (!presente) return;
+
+      if (tratamientos.includes("Endodoncia")) {
+        [`${diente}_endo`, `${diente}_r`].forEach(layer => {
+          if (meshes[layer]) meshes[layer].visible = true;
         });
-      } else if (tratamiento === "Calza (Caries)") {
+      }
+
+      if (tratamientos.includes("Calza (Caries)")) {
         const caries = `${diente}_caries`;
-        if (allMeshes.current[caries]) allMeshes.current[caries].visible = true;
-      } else {
-        if (allMeshes.current[diente]) allMeshes.current[diente].visible = true;
+        if (meshes[caries]) meshes[caries].visible = true;
+      }
+
+      if (tratamientos.length === 0 || (!tratamientos.includes("Endodoncia") && !tratamientos.includes("Calza (Caries)"))) {
+        if (meshes[diente]) meshes[diente].visible = true;
       }
     });
   }, [historiaClinica]);
@@ -80,12 +111,10 @@ export default function Odontograma3D({ setTabIndex }) {
     const baseName = e.object.name.replace(/(_caries|_endo|_r)/g, "");
     setSelectedTooth(baseName);
 
-    const toothData = historiaClinica.find(item => item.diente === baseName) || {};
-    const dientePresente = toothData.diagnostico !== "Ausente";
-
-    setPresente(dientePresente);
-    setEndodoncia(toothData.tratamiento === "Endodoncia");
-    setCalza(toothData.tratamiento === "Calza (Caries)");
+    const data = historiaClinica.find(d => d.diente === baseName) || {};
+    setPresente(data.presente ?? true);
+    setEndodoncia(data.tratamientos?.includes("Endodoncia") || false);
+    setCalza(data.tratamientos?.includes("Calza (Caries)") || false);
 
     Object.keys(allMeshes.current).forEach(nombre => {
       if (nombre.startsWith(baseName)) {
@@ -93,40 +122,21 @@ export default function Odontograma3D({ setTabIndex }) {
       }
     });
 
-    if (dientePresente) {
-      if (toothData.tratamiento === "Endodoncia") {
-        [`${baseName}_endo`, `${baseName}_r_caries`].forEach(layer => {
-          if (allMeshes.current[layer]) allMeshes.current[layer].visible = true;
-        });
-      } else if (toothData.tratamiento === "Calza (Caries)") {
-        const caries = `${baseName}_caries`;
-        if (allMeshes.current[caries]) allMeshes.current[caries].visible = true;
-      } else {
-        if (allMeshes.current[baseName]) {
-          allMeshes.current[baseName].visible = true;
-        }
-      }
-    }
-
     setOpen(true);
   };
 
   const handleSave = async () => {
     if (!selectedTooth || !paciente) return;
 
-    let tratamiento = "";
+    const updated = historiaClinica.filter(item => item.diente !== selectedTooth);
+
+    const tratamientos = [];
     if (presente) {
-      if (endodoncia) tratamiento = "Endodoncia";
-      else if (calza) tratamiento = "Calza (Caries)";
+      if (endodoncia) tratamientos.push("Endodoncia");
+      if (calza) tratamientos.push("Calza (Caries)");
     }
 
-    const updated = historiaClinica.filter(item => item.diente !== selectedTooth);
-    updated.push({
-      diente: selectedTooth,
-      tratamiento,
-      presente
-    });
-
+    updated.push({ diente: selectedTooth, tratamientos, presente });
     setHistoriaClinica(updated);
 
     try {
